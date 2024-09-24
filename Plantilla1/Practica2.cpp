@@ -1,30 +1,31 @@
 #include <mpi.h>
 #include <iostream>
-#include <vector>
+#include <cstdlib>
 
 using namespace std;
 
-constexpr int TAM_MATRIZ = 4; // Tamaño de la matriz
+constexpr int TAM_MATRIZ = 4;   // Tamaño de la matriz
+constexpr int RANK_MASTER = 0;  // Rango del proceso maestro
 
 /*
-	Función que se necarga de generar una matriz de tamaño N x N con valores aleatorios.
+    Función que se necarga de generar una matriz de tamaño N x N con valores aleatorios.
 
-	@param matrix: vector que almacena la matriz.
+    @param matrix: matriz que almacena la matriz.
 */
-void generateMatrix(vector<int>& matrix);
+void generateMatrix(int matrix[TAM_MATRIZ][TAM_MATRIZ]);
 /*
-	Función que se encarga de imprimir una matriz de tamaño N x N.
+    Función que se encarga de imprimir una matriz de tamaño N x N.
 
-	@param matrix: vector que almacena la matriz.
+    @param matrix: matriz que almacena la matriz.
 */
-void printMatrix(const vector<int>& matrix);
+void printMatrix(const int matrix[TAM_MATRIZ][TAM_MATRIZ]);
 /*
-	Función que se encarga de imprimir una línea horizontal de la matriz.
+    Función que se encarga de imprimir una línea horizontal de la matriz.
 */
 void printLine();
 
 /*
-	Función principal.
+    Función principal.
 */
 int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
@@ -33,23 +34,22 @@ int main(int argc, char* argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-	// Verificar que el número de procesos sea igual al tamaño de la matriz
+    // Verificar que el número de procesos sea igual al tamaño de la matriz
     if (size != TAM_MATRIZ) {
-		// Imprimir un mensaje de error en el proceso 0, evitando que los demás procesos muestren el mismo mensaje
-        if (rank == 0) {
+        // Imprimir un mensaje de error en el proceso 0, evitando que los demás procesos muestren el mismo mensaje
+        if (rank == RANK_MASTER) {
             fprintf(stderr, "El número de procesos debe ser igual al tamaño de la matriz (%d).\n", TAM_MATRIZ);
         }
-		MPI_Abort(MPI_COMM_WORLD, 1);
-        return -1;
+        MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
-	// Inicializar las matrices A, B y C
-    vector<int> A(TAM_MATRIZ * TAM_MATRIZ), B(TAM_MATRIZ * TAM_MATRIZ), C(TAM_MATRIZ * TAM_MATRIZ);
-	// Inicializar las matrices locales, que almacenan las filas correspondientes a cada proceso
-    vector<int> localA(TAM_MATRIZ), localB(TAM_MATRIZ), localC(TAM_MATRIZ);
+    // Inicializar las matrices A, B y C
+    int A[TAM_MATRIZ][TAM_MATRIZ], B[TAM_MATRIZ][TAM_MATRIZ], C[TAM_MATRIZ][TAM_MATRIZ];
+    // Inicializar las matrices locales, que almacenan las filas correspondientes a cada proceso
+    int localA[TAM_MATRIZ], localB[TAM_MATRIZ], localC[TAM_MATRIZ];
 
-	// Generar las matrices A y B en el proceso 0 y mostrarlas
-    if (rank == 0) {
+    // Generar las matrices A y B en el proceso 0 y mostrarlas
+    if (rank == RANK_MASTER) {
         generateMatrix(A);
         generateMatrix(B);
         printf("Matriz A:\n");
@@ -62,13 +62,13 @@ int main(int argc, char* argv[]) {
     double startTime = MPI_Wtime();
 
     // Distribuir las filas de las matrices A y B a todos los procesos
-    MPI_Bcast(A.data(), TAM_MATRIZ * TAM_MATRIZ, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(B.data(), TAM_MATRIZ * TAM_MATRIZ, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(A, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(B, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
 
     // Cada proceso extrae su parte correspondiente
     for (int i = 0; i < TAM_MATRIZ; ++i) {
-        localA[i] = A[rank * TAM_MATRIZ + i];
-        localB[i] = B[rank * TAM_MATRIZ + i];
+        localA[i] = A[rank][i];
+        localB[i] = B[rank][i];
     }
 
     // Sumar las filas correspondientes
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Recopilar los resultados en la matriz C en el proceso maestro
-    MPI_Gather(localC.data(), TAM_MATRIZ, MPI_INT, C.data(), TAM_MATRIZ, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(localC, TAM_MATRIZ, MPI_INT, C[rank], TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
 
     // Medir el tiempo de finalización
     double endTime = MPI_Wtime();
@@ -92,9 +92,11 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-void generateMatrix(vector<int>& matrix) {
-    for (int i = 0; i < TAM_MATRIZ * TAM_MATRIZ; ++i) {
-        matrix[i] = rand() % 10; // Números aleatorios entre 0 y 9
+void generateMatrix(int matrix[TAM_MATRIZ][TAM_MATRIZ]) {
+    for (int i = 0; i < TAM_MATRIZ; ++i) {
+        for (int j = 0; j < TAM_MATRIZ; ++j) {
+            matrix[i][j] = rand() % 10; // Números aleatorios entre 0 y 9
+        }
     }
 }
 
@@ -106,7 +108,7 @@ void printLine() {
     printf("+\n");
 }
 
-void printMatrix(const vector<int>& matrix) {
+void printMatrix(const int matrix[TAM_MATRIZ][TAM_MATRIZ]) {
     // Imprimir la línea superior
     printLine();
 
@@ -114,7 +116,7 @@ void printMatrix(const vector<int>& matrix) {
         // Imprimir los valores de la fila
         printf("|");
         for (int j = 0; j < TAM_MATRIZ; ++j) {
-            printf(" %2d |", matrix[i * TAM_MATRIZ + j]);
+            printf(" %2d |", matrix[i][j]);
         }
         printf("\n");
 
@@ -122,6 +124,7 @@ void printMatrix(const vector<int>& matrix) {
         printLine();
     }
 }
+
 
 /*
 1.	¿Las comunicaciones colectivas facilitan la programación y simplifican el código? ¿Se puede pensar que acortan el tiempo de ejecución de los programas?
