@@ -1,6 +1,6 @@
 #include <mpi.h>
-#include <iostream>
-#include <cstdlib>              // Numeros aleatorios
+#include <iostream>             
+#include <stdlib.h>             // Numeros pseudoaleatorios
 
 using namespace std;
 
@@ -48,6 +48,7 @@ int main(int argc, char* argv[]) {
     // Inicializar las matrices locales, que almacenan las filas correspondientes a cada proceso
     int localA[TAM_MATRIZ], localB[TAM_MATRIZ], localC[TAM_MATRIZ];
 
+	srand(time(NULL)); // Inicializar la semilla para generar números pseudoaleatorios
     // Generar las matrices A y B en el proceso 0 y mostrarlas
     if (rank == RANK_MASTER) {
         generateMatrix(A);
@@ -58,34 +59,32 @@ int main(int argc, char* argv[]) {
         printMatrix(B);
     }
 
-    // Medir el tiempo de inicio
-    double startTime = MPI_Wtime();
+	// Medir el tiempo de inicio
+    double commStartTime, commEndTime, calcStartTime, calcEndTime = 0;
 
+    commStartTime = MPI_Wtime();
     // Distribuir las filas de las matrices A y B a todos los procesos
-    MPI_Bcast(A, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
-    MPI_Bcast(B, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
-
-    // Cada proceso extrae su parte correspondiente
-    for (int i = 0; i < TAM_MATRIZ; ++i) {
-        localA[i] = A[rank][i];
-        localB[i] = B[rank][i];
-    }
+    MPI_Scatter(A, TAM_MATRIZ, MPI_INT, localA, TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+    MPI_Scatter(B, TAM_MATRIZ, MPI_INT, localB, TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+    commEndTime = MPI_Wtime();
 
     // Sumar las filas correspondientes
+    calcStartTime = MPI_Wtime();
     for (int i = 0; i < TAM_MATRIZ; ++i) {
         localC[i] = localA[i] + localB[i];
     }
+    calcEndTime = MPI_Wtime();
 
     // Recopilar los resultados en la matriz C en el proceso maestro
-    MPI_Gather(localC, TAM_MATRIZ, MPI_INT, C[rank], TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
-
-    // Medir el tiempo de finalización
-    double endTime = MPI_Wtime();
+	commStartTime += MPI_Wtime();
+    MPI_Gather(localC, TAM_MATRIZ, MPI_INT, C, TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+	commEndTime += MPI_Wtime();
 
     if (rank == RANK_MASTER) {
         printf("Matriz C (resultado A+B):\n");
         printMatrix(C);
-        printf("Tiempo de ejecución: %f segundos\n", endTime - startTime);
+        printf("Tiempo de comunicación: %f segundos\n", commEndTime - commStartTime);
+        printf("Tiempo de cálculo: %f segundos\n", calcEndTime - calcStartTime);
     }
 
     MPI_Finalize();
@@ -95,7 +94,7 @@ int main(int argc, char* argv[]) {
 void generateMatrix(int matrix[TAM_MATRIZ][TAM_MATRIZ]) {
     for (int i = 0; i < TAM_MATRIZ; ++i) {
         for (int j = 0; j < TAM_MATRIZ; ++j) {
-            matrix[i][j] = rand() % 10; // Números aleatorios entre 0 y 9
+            matrix[i][j] = rand() % 10; // Números pseudoaleatorios entre 0 y 9
         }
     }
 }
@@ -138,5 +137,25 @@ void printMatrix(int matrix[TAM_MATRIZ][TAM_MATRIZ]) {
 •	Medir el tiempo antes y después de las operaciones de comunicación (e.g., MPI_Scatter y MPI_Gather).
 •	Medir el tiempo antes y después de las operaciones de cálculo (e.g., la suma de las filas).
 •	Restar los tiempos de comunicación del tiempo total para obtener el tiempo de cálculo.
+double commStartTime, commEndTime, calcStartTime, calcEndTime;
 
+commStartTime = MPI_Wtime();
+MPI_Scatter(A.data(), N, MPI_INT, localA.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
+MPI_Scatter(B.data(), N, MPI_INT, localB.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
+commEndTime = MPI_Wtime();
+
+calcStartTime = MPI_Wtime();
+for (int i = 0; i < N; ++i) {
+    localC[i] = localA[i] + localB[i];
+}
+calcEndTime = MPI_Wtime();
+
+commStartTime = MPI_Wtime();
+MPI_Gather(localC.data(), N, MPI_INT, C.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
+commEndTime = MPI_Wtime();
+
+if (rank == 0) {
+    std::cout << "Tiempo de comunicación: " << (commEndTime - commStartTime) << " segundos" << std::endl;
+    std::cout << "Tiempo de cálculo: " << (calcEndTime - calcStartTime) << " segundos" << std::endl;
+}
 */
