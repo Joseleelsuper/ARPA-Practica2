@@ -60,31 +60,30 @@ int main(int argc, char* argv[]) {
     }
 
 	// Medir el tiempo de inicio
-    double commStartTime, commEndTime, calcStartTime, calcEndTime = 0;
+	double startTime = MPI_Wtime();
 
-    commStartTime = MPI_Wtime();
     // Distribuir las filas de las matrices A y B a todos los procesos
-    MPI_Scatter(A, TAM_MATRIZ, MPI_INT, localA, TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
-    MPI_Scatter(B, TAM_MATRIZ, MPI_INT, localB, TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
-    commEndTime = MPI_Wtime();
+	MPI_Bcast(A, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+	MPI_Bcast(B, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+
+	// Cada proceso extrae su parte correspondiente
+	for (int i = 0; i < TAM_MATRIZ; ++i) {
+		localA[i] = A[rank][i];
+		localB[i] = B[rank][i];
+	}
 
     // Sumar las filas correspondientes
-    calcStartTime = MPI_Wtime();
     for (int i = 0; i < TAM_MATRIZ; ++i) {
         localC[i] = localA[i] + localB[i];
     }
-    calcEndTime = MPI_Wtime();
 
     // Recopilar los resultados en la matriz C en el proceso maestro
-	commStartTime += MPI_Wtime();
-    MPI_Gather(localC, TAM_MATRIZ, MPI_INT, C, TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
-	commEndTime += MPI_Wtime();
+    MPI_Gather(localC, TAM_MATRIZ, MPI_INT, C[rank], TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
 
     if (rank == RANK_MASTER) {
         printf("Matriz C (resultado A+B):\n");
         printMatrix(C);
-        printf("Tiempo de comunicación: %f segundos\n", commEndTime - commStartTime);
-        printf("Tiempo de cálculo: %f segundos\n", calcEndTime - calcStartTime);
+		printf("Tiempo de ejecución: %f segundos\n", MPI_Wtime() - startTime);
     }
 
     MPI_Finalize();
@@ -123,39 +122,3 @@ void printMatrix(int matrix[TAM_MATRIZ][TAM_MATRIZ]) {
         printLine();
     }
 }
-
-
-/*
-1.	¿Las comunicaciones colectivas facilitan la programación y simplifican el código? ¿Se puede pensar que acortan el tiempo de ejecución de los programas?
-•	Las comunicaciones colectivas facilitan la programación y simplifican el código al reducir la cantidad de llamadas a funciones de envío y recepción. Sin embargo, no necesariamente acortan el tiempo de ejecución, ya que el tiempo de comunicación depende de la implementación de MPI y de la red de interconexión.
-
-2.	Explicar qué refleja la medida de tiempo realizada.
-•	La medida de tiempo realizada con MPI_Wtime refleja el tiempo total de ejecución del programa, incluyendo tanto el tiempo de comunicación entre procesos como el tiempo de cálculo.
-
-3.	Plantear otras posibilidades de medida de tiempos de ejecución que permitan distinguir los tiempos invertidos en comunicación entre procesos y los tiempos dedicados al cálculo.
-•	Para distinguir los tiempos de comunicación y cálculo, se pueden realizar mediciones separadas:
-•	Medir el tiempo antes y después de las operaciones de comunicación (e.g., MPI_Scatter y MPI_Gather).
-•	Medir el tiempo antes y después de las operaciones de cálculo (e.g., la suma de las filas).
-•	Restar los tiempos de comunicación del tiempo total para obtener el tiempo de cálculo.
-double commStartTime, commEndTime, calcStartTime, calcEndTime;
-
-commStartTime = MPI_Wtime();
-MPI_Scatter(A.data(), N, MPI_INT, localA.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
-MPI_Scatter(B.data(), N, MPI_INT, localB.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
-commEndTime = MPI_Wtime();
-
-calcStartTime = MPI_Wtime();
-for (int i = 0; i < N; ++i) {
-    localC[i] = localA[i] + localB[i];
-}
-calcEndTime = MPI_Wtime();
-
-commStartTime = MPI_Wtime();
-MPI_Gather(localC.data(), N, MPI_INT, C.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
-commEndTime = MPI_Wtime();
-
-if (rank == 0) {
-    std::cout << "Tiempo de comunicación: " << (commEndTime - commStartTime) << " segundos" << std::endl;
-    std::cout << "Tiempo de cálculo: " << (calcEndTime - calcStartTime) << " segundos" << std::endl;
-}
-*/
