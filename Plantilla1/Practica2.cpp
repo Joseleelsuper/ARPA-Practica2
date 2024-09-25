@@ -1,6 +1,6 @@
 #include <mpi.h>
 #include <iostream>
-#include <cstdlib>
+#include <cstdlib>              // Numeros aleatorios
 
 using namespace std;
 
@@ -18,7 +18,7 @@ void generateMatrix(int matrix[TAM_MATRIZ][TAM_MATRIZ]);
 
     @param matrix: matriz que almacena la matriz.
 */
-void printMatrix(const int matrix[TAM_MATRIZ][TAM_MATRIZ]);
+void printMatrix(int matrix[TAM_MATRIZ][TAM_MATRIZ]);
 /*
     Función que se encarga de imprimir una línea horizontal de la matriz.
 */
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
     // Medir el tiempo de finalización
     double endTime = MPI_Wtime();
 
-    if (rank == 0) {
+    if (rank == RANK_MASTER) {
         printf("Matriz C (resultado A+B):\n");
         printMatrix(C);
         printf("Tiempo de ejecución: %f segundos\n", endTime - startTime);
@@ -108,7 +108,7 @@ void printLine() {
     printf("+\n");
 }
 
-void printMatrix(const int matrix[TAM_MATRIZ][TAM_MATRIZ]) {
+void printMatrix(int matrix[TAM_MATRIZ][TAM_MATRIZ]) {
     // Imprimir la línea superior
     printLine();
 
@@ -138,27 +138,5 @@ void printMatrix(const int matrix[TAM_MATRIZ][TAM_MATRIZ]) {
 •	Medir el tiempo antes y después de las operaciones de comunicación (e.g., MPI_Scatter y MPI_Gather).
 •	Medir el tiempo antes y después de las operaciones de cálculo (e.g., la suma de las filas).
 •	Restar los tiempos de comunicación del tiempo total para obtener el tiempo de cálculo.
-
-double commStartTime, commEndTime, calcStartTime, calcEndTime;
-
-commStartTime = MPI_Wtime();
-MPI_Scatter(A.data(), N, MPI_INT, localA.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
-MPI_Scatter(B.data(), N, MPI_INT, localB.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
-commEndTime = MPI_Wtime();
-
-calcStartTime = MPI_Wtime();
-for (int i = 0; i < N; ++i) {
-    localC[i] = localA[i] + localB[i];
-}
-calcEndTime = MPI_Wtime();
-
-commStartTime = MPI_Wtime();
-MPI_Gather(localC.data(), N, MPI_INT, C.data(), N, MPI_INT, 0, MPI_COMM_WORLD);
-commEndTime = MPI_Wtime();
-
-if (rank == 0) {
-    std::cout << "Tiempo de comunicación: " << (commEndTime - commStartTime) << " segundos" << std::endl;
-    std::cout << "Tiempo de cálculo: " << (calcEndTime - calcStartTime) << " segundos" << std::endl;
-}
 
 */
