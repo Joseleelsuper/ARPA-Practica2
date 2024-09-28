@@ -1,6 +1,6 @@
 #include <mpi.h>
 #include <iostream>             
-#include <stdlib.h>             // Numeros pseudoaleatorios
+#include <stdlib.h>             // Numeros aleatorios
 
 using namespace std;
 
@@ -38,17 +38,17 @@ int main(int argc, char* argv[]) {
     if (size != TAM_MATRIZ) {
         // Imprimir un mensaje de error en el proceso 0, evitando que los demás procesos muestren el mismo mensaje
         if (rank == RANK_MASTER) {
-            fprintf(stderr, "El número de procesos debe ser igual al tamaño de la matriz (%d).\n", TAM_MATRIZ);
+            printf("El número de procesos debe ser igual al tamaño de la matriz (%d).\n", TAM_MATRIZ);
         }
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
     // Inicializar las matrices A, B y C
     int A[TAM_MATRIZ][TAM_MATRIZ], B[TAM_MATRIZ][TAM_MATRIZ], C[TAM_MATRIZ][TAM_MATRIZ];
-    // Inicializar las matrices locales, que almacenan las filas correspondientes a cada proceso
+    // Inicializar los vectores locales, que almacenan las filas correspondientes a cada proceso
     int localA[TAM_MATRIZ], localB[TAM_MATRIZ], localC[TAM_MATRIZ];
 
-	srand(time(NULL)); // Inicializar la semilla para generar números pseudoaleatorios
+    srand(time(NULL)); // Inicializar la semilla para generar números aleatorios
     // Generar las matrices A y B en el proceso 0 y mostrarlas
     if (rank == RANK_MASTER) {
         generateMatrix(A);
@@ -59,18 +59,18 @@ int main(int argc, char* argv[]) {
         printMatrix(B);
     }
 
-	// Medir el tiempo de inicio
-	double startTime = MPI_Wtime();
+    // Medir el tiempo de inicio
+    double startTime = MPI_Wtime();
 
     // Distribuir las filas de las matrices A y B a todos los procesos
-	MPI_Bcast(A, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
-	MPI_Bcast(B, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(A, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
+    MPI_Bcast(B, TAM_MATRIZ * TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
 
-	// Cada proceso extrae su parte correspondiente
-	for (int i = 0; i < TAM_MATRIZ; ++i) {
-		localA[i] = A[rank][i];
-		localB[i] = B[rank][i];
-	}
+    // Cada proceso extrae su parte correspondiente
+    for (int i = 0; i < TAM_MATRIZ; ++i) {
+        localA[i] = A[rank][i];
+        localB[i] = B[rank][i];
+    }
 
     // Sumar las filas correspondientes
     for (int i = 0; i < TAM_MATRIZ; ++i) {
@@ -80,10 +80,12 @@ int main(int argc, char* argv[]) {
     // Recopilar los resultados en la matriz C en el proceso maestro
     MPI_Gather(localC, TAM_MATRIZ, MPI_INT, C[rank], TAM_MATRIZ, MPI_INT, RANK_MASTER, MPI_COMM_WORLD);
 
+	double endTime = MPI_Wtime();
+
     if (rank == RANK_MASTER) {
         printf("Matriz C (resultado A+B):\n");
         printMatrix(C);
-		printf("Tiempo de ejecución: %f segundos\n", MPI_Wtime() - startTime);
+        printf("Tiempo de ejecución: %f segundos\n", endTime - startTime);
     }
 
     MPI_Finalize();
@@ -93,7 +95,7 @@ int main(int argc, char* argv[]) {
 void generateMatrix(int matrix[TAM_MATRIZ][TAM_MATRIZ]) {
     for (int i = 0; i < TAM_MATRIZ; ++i) {
         for (int j = 0; j < TAM_MATRIZ; ++j) {
-            matrix[i][j] = rand() % 10; // Números pseudoaleatorios entre 0 y 9
+            matrix[i][j] = rand() % 10; // Números aleatorios entre 0 y 9
         }
     }
 }
