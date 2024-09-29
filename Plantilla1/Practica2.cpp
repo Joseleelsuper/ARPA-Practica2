@@ -1,6 +1,5 @@
 #include <mpi.h>
-#include <iostream>             
-#include <stdlib.h>             // Numeros aleatorios
+#include <iostream>
 
 using namespace std;
 
